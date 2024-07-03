@@ -62,7 +62,6 @@ function XYAxisGrid() {
           .ticks(6)
         );
 
-
       // Add a grey dotted line at Y=0
       svg.append("line")
         .style("stroke", "grey")
@@ -73,25 +72,76 @@ function XYAxisGrid() {
         .attr("x2", width - margin.left - margin.right)
         .attr("y2", y(0));
 
+      // ----------------------------------------------------------
+      // Grid above, data below
+      // ----------------------------------------------------------
+
       // Create a simulation for the data points
-      const simulation = d3.forceSimulation(testData)
-        .force("x", d3.forceX(d => x(d.stage)).strength(0.5))
-        .force("y", d3.forceY(d => y(d.status)).strength(0.5))
-        .force("collide", d3.forceCollide(5)) // Use a collision force with a radius to prevent overlap
-        .stop();
+      // const simulation = d3.forceSimulation(testData)
+      //   .force("x", d3.forceX(d => x(d.stage)).strength(0.5))
+      //   .force("y", d3.forceY(d => y(d.status)).strength(0.5))
+      //   .force("collide", d3.forceCollide(5)) // Use a collision force with a radius to prevent overlap
+      //   .stop();
 
       // Run the simulation a fixed number of times
-      for (let i = 0; i < 120; ++i) simulation.tick();
+      // for (let i = 0; i < 120; ++i) simulation.tick();
 
       // Now, use the updated positions from the simulation to plot the circles
-      svg.selectAll("circle")
-        .data(testData)
+      // svg.selectAll("circle")
+      //   .data(testData)
+      //   .join("circle")
+      //   .attr("cx", d => d.x)
+      //   .attr("cy", d => d.y)
+      //   .attr("r", 3)
+      //   .style("fill", "orange");
+
+      // Define drag behavior
+      const drag = d3.drag()
+        .on("start", dragStarted)
+        .on("drag", dragged)
+        .on("end", dragEnded);
+
+      function dragStarted(event, d) {
+        d3.select(this).raise().classed("active", true);
+      }
+
+      function dragged(event, d) {
+        d3.select(this)
+          .attr("cx", event.x)
+          .attr("cy", event.y);
+      }
+
+      function dragEnded(event, d) {
+        // Snap back to original position
+        d3.select(this)
+          .classed("active", false)
+          .transition()
+          .duration(900)
+          .attr("cx", d.x)
+          .attr("cy", d.y);
+      }
+
+      const uniqueCoordinates = new Map();
+      // Aggregate unique coordinates
+      testData.forEach(d => {
+        const xCoord = x(d.stage); // Assuming 'stage' is mapped to the x-axis
+        const yCoord = y(d.status); // Assuming 'status' is mapped to the y-axis
+        const key = `${xCoord},${yCoord}`;
+
+        if (!uniqueCoordinates.has(key)) {
+          uniqueCoordinates.set(key, { x: xCoord, y: yCoord });
+        }
+      });
+
+      // Plot red points at unique coordinates
+      svg.selectAll("uniqueCircle")
+        .data(Array.from(uniqueCoordinates.values()))
         .join("circle")
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
-        .attr("r", 3)
-        .style("fill", "orange");
-
+        .attr("r", 6) // Radius of the circle
+        .style("fill", "red")
+        .call(drag);
     }
   }, [windowSize, testData]);
 
