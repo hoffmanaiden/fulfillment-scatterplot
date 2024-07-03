@@ -83,26 +83,6 @@ function XYAxisGrid() {
       // Run the simulation a fixed number of times
       for (let i = 0; i < 120; ++i) simulation.tick();
 
-      // Group data points by clusterId
-      const clusters = d3.group(testData, d => d.clusterId);
-
-      clusters.forEach((points, clusterId) => {
-        let sumX = 0, sumY = 0;
-        points.forEach(d => {
-          sumX += d.x;
-          sumY += d.y;
-        });
-        const centroidX = sumX / points.length;
-        const centroidY = sumY / points.length;
-
-        // Draw a red dot at the centroid of each cluster
-        svg.append("circle")
-          .attr("cx", centroidX)
-          .attr("cy", centroidY)
-          .attr("r", 5) // Radius of the dot
-          .style("fill", "red");
-      });
-
       // Now, use the updated positions from the simulation to plot the circles
       svg.selectAll("circle")
         .data(testData)
