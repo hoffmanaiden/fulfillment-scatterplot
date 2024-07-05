@@ -76,25 +76,6 @@ function XYAxisGrid() {
       // Grid above, data below
       // ----------------------------------------------------------
 
-      // Create a simulation for the data points
-      // const simulation = d3.forceSimulation(testData)
-      //   .force("x", d3.forceX(d => x(d.stage)).strength(0.5))
-      //   .force("y", d3.forceY(d => y(d.status)).strength(0.5))
-      //   .force("collide", d3.forceCollide(5)) // Use a collision force with a radius to prevent overlap
-      //   .stop();
-
-      // Run the simulation a fixed number of times
-      // for (let i = 0; i < 120; ++i) simulation.tick();
-
-      // Now, use the updated positions from the simulation to plot the circles
-      // svg.selectAll("circle")
-      //   .data(testData)
-      //   .join("circle")
-      //   .attr("cx", d => d.x)
-      //   .attr("cy", d => d.y)
-      //   .attr("r", 3)
-      //   .style("fill", "orange");
-
       // Define drag behavior
       const drag = d3.drag()
         .on("start", dragStarted)
@@ -116,7 +97,7 @@ function XYAxisGrid() {
         d3.select(this)
           .classed("active", false)
           .transition()
-          .duration(900)
+          .duration(500)
           .attr("cx", d.x)
           .attr("cy", d.y);
       }
@@ -133,6 +114,47 @@ function XYAxisGrid() {
         }
       });
 
+      // Create a simulation for the data points
+      const simulation = d3.forceSimulation(testData)
+        .force("x", d3.forceX(d => x(d.stage)).strength(0.5))
+        .force("y", d3.forceY(d => y(d.status)).strength(0.5))
+        .force("collide", d3.forceCollide(5)) // Use a collision force with a radius to prevent overlap
+        .stop();
+
+      // Run the simulation a fixed number of times
+      for (let i = 0; i < 120; ++i) simulation.tick();
+
+      // Step 1: Prepare Data for Links
+      const links = testData.map(d => {
+        const xCoord = x(d.stage); // x position for the orange dot
+        const yCoord = y(d.status); // y position for the orange dot
+        const key = `${xCoord},${yCoord}`;
+        const match = uniqueCoordinates.get(key); // Find the matching red dot
+        return { source: { x: d.x, y: d.y }, target: { x: match.x, y: match.y } };
+      });
+
+      // Step 2: Draw Links
+      svg.selectAll(".link")
+        .data(links)
+        .enter()
+        .append("line")
+        .classed("link", true)
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y)
+        .style("stroke", "white") // Color of the line
+        .style("stroke-width", 1); // Thickness of the line
+
+      // Now, use the updated positions from the simulation to plot the circles
+      svg.selectAll("circle")
+        .data(testData)
+        .join("circle")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", 3)
+        .style("fill", "orange");
+
       // Plot red points at unique coordinates
       svg.selectAll("uniqueCircle")
         .data(Array.from(uniqueCoordinates.values()))
@@ -142,6 +164,7 @@ function XYAxisGrid() {
         .attr("r", 6) // Radius of the circle
         .style("fill", "red")
         .call(drag);
+
     }
   }, [windowSize, testData]);
 
