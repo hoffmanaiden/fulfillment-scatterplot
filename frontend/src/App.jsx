@@ -10,6 +10,18 @@ function App() {
   )
 }
 
+function clusterObjects(objects) {
+  const clusters = {}
+  objects.forEach(obj => {
+    const key = `${obj.stage}:${obj.status}`
+    if (!clusters[key]) {
+      clusters[key] = { x: obj.stage, y: obj.status, children: [] }
+    }
+    clusters[key].children.push(obj)
+  })
+  return clusters
+}
+
 function XYAxisGrid() {
   const d3Container = useRef(null);
   const [windowSize, setWindowSize] = useState({
@@ -27,6 +39,7 @@ function XYAxisGrid() {
   }, []);
 
   useEffect(() => {
+    let clusteredObjects = clusterObjects(testData)
     if (d3Container.current) {
       // Set the dimensions and margins of the graph
       const width = windowSize.width - 6;
@@ -76,94 +89,15 @@ function XYAxisGrid() {
       // Grid above, data below
       // ----------------------------------------------------------
 
-      // Define drag behavior
-      const drag = d3.drag()
-        .on("start", dragStarted)
-        .on("drag", dragged)
-        .on("end", dragEnded);
-
-      function dragStarted(event, d) {
-        d3.select(this).raise().classed("active", true);
-      }
-
-      function dragged(event, d) {
-        d3.select(this)
-          .attr("cx", event.x)
-          .attr("cy", event.y);
-      }
-
-      function dragEnded(event, d) {
-        // Snap back to original position
-        d3.select(this)
-          .classed("active", false)
-          .transition()
-          .duration(500)
-          .attr("cx", d.x)
-          .attr("cy", d.y);
-      }
-
-      const uniqueCoordinates = new Map();
-      // Aggregate unique coordinates
-      testData.forEach(d => {
-        const xCoord = x(d.stage); // Assuming 'stage' is mapped to the x-axis
-        const yCoord = y(d.status); // Assuming 'status' is mapped to the y-axis
-        const key = `${xCoord},${yCoord}`;
-
-        if (!uniqueCoordinates.has(key)) {
-          uniqueCoordinates.set(key, { x: xCoord, y: yCoord });
-        }
+      // Assuming clusteredObjects is an array of objects with x and y properties
+      Object.values(clusteredObjects).forEach(obj => {
+        svg.append("circle") // Append a circle for each object
+          .datum(obj)
+          .attr("cx", x(obj.x)) // Set the x-coordinate based on the x scale
+          .attr("cy", y(obj.y)) // Set the y-coordinate based on the y scale
+          .attr("r", 5) // Radius of the circle
+          .style("fill", "blue") // Fill color of the circle
       });
-
-      // Create a simulation for the data points
-      const simulation = d3.forceSimulation(testData)
-        .force("x", d3.forceX(d => x(d.stage)).strength(0.5))
-        .force("y", d3.forceY(d => y(d.status)).strength(0.5))
-        .force("collide", d3.forceCollide(5)) // Use a collision force with a radius to prevent overlap
-        .stop();
-
-      // Run the simulation a fixed number of times
-      for (let i = 0; i < 120; ++i) simulation.tick();
-
-      // Step 1: Prepare Data for Links
-      const links = testData.map(d => {
-        const xCoord = x(d.stage); // x position for the orange dot
-        const yCoord = y(d.status); // y position for the orange dot
-        const key = `${xCoord},${yCoord}`;
-        const match = uniqueCoordinates.get(key); // Find the matching red dot
-        return { source: { x: d.x, y: d.y }, target: { x: match.x, y: match.y } };
-      });
-
-      // Step 2: Draw Links
-      svg.selectAll(".link")
-        .data(links)
-        .enter()
-        .append("line")
-        .classed("link", true)
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y)
-        .style("stroke", "white") // Color of the line
-        .style("stroke-width", 1); // Thickness of the line
-
-      // Now, use the updated positions from the simulation to plot the circles
-      svg.selectAll("circle")
-        .data(testData)
-        .join("circle")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", 3)
-        .style("fill", "orange");
-
-      // Plot red points at unique coordinates
-      svg.selectAll("uniqueCircle")
-        .data(Array.from(uniqueCoordinates.values()))
-        .join("circle")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", 6) // Radius of the circle
-        .style("fill", "red")
-        .call(drag);
 
     }
   }, [windowSize, testData]);
